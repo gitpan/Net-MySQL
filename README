@@ -33,25 +33,11 @@ To install this module type the following:
    make install
 
 
-If you use this by Perl older than 5.6.0, it is necessary to install
-the latest I<Math::BigInt>. However, since the newest version of
-I<Math::BigInt> distributed now has a possibility that it may not
-operate correctly, you should install Math::BigInt version 1.49.
-
-   <http://bloodgate.com/perl/>
-
-I recommend you to use the newest Perl
-
-
 DEPENDENCIES
 
 This module requires these other modules and libraries:
 
   IO::Socket::INET
-  Math::BigInt
-
-Since both are CORE Modules of Perl, there is no necessity for
-installation.
 
 
 BUG REPORT

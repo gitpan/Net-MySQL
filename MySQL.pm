@@ -5,7 +5,7 @@ use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -549,7 +549,6 @@ sub _get_string_and_seek_position
 }
 
 
-
 package Net::MySQL::Password;
 use strict;
 
@@ -559,13 +558,6 @@ sub scramble
 	my $password = shift;
 	my $hash_seed = shift;
 	my $client_capabilities = shift;
-
-	eval { require Math::BigInt };
-	if ($@) {
-		warn 'Net::MySQL::Password: Cannot load Math::BigInt module'
-			if Net::MySQL->debug;
-		return '';
-	}
 
 	return '' unless $password;
 	return '' if length $password == 0;
@@ -579,15 +571,12 @@ sub scramble
 	my ($dRes, $dSeed, $dMax);
 	if ($client_capabilities < 1) {
 		$max_value = 0x01FFFFFF;
-		$seed = Math::BigInt->new($hash_pass[0])->bxor($hash_mess[0])
-			% $max_value;
+		$seed = _xor_by_long($hash_pass[0], $hash_mess[0]) % $max_value;
 		$seed2 = int($seed / 2);
 	} else {
 		$max_value= 0x3FFFFFFF;
-		$seed  = Math::BigInt->new($hash_pass[0])->bxor($hash_mess[0])
-			% $max_value ;
-		$seed2 = Math::BigInt->new($hash_pass[1])->bxor($hash_mess[1])
-			% $max_value;
+		$seed  = _xor_by_long($hash_pass[0], $hash_mess[0]) % $max_value;
+		$seed2 = _xor_by_long($hash_pass[1], $hash_mess[1]) % $max_value;
 	}
 	$dMax = $max_value;
 
@@ -596,7 +585,7 @@ sub scramble
 		$seed2 = int(($seed + $seed2 + 33) % $max_value);
 		$dSeed = $seed;
 		$dRes = $dSeed / $dMax;
-		push @out, int ($dRes * 31) + 64;
+		push @out, int($dRes * 31) + 64;
 	}
 
 	if ($client_capabilities == 1) {
@@ -629,20 +618,47 @@ sub _get_hash
 		my $c = substr $password, $i, 1;
 		next if $c eq ' ' || $c eq "\t";
 		my $tmp = ord $c;
-		my $value = Math::BigInt->new(
-			((
-				Math::BigInt->new($nr)->band(63)
-				+ $add) * $tmp) + $nr *256
-		);
-		$nr = Math::BigInt->new(
-			Math::BigInt->new($nr)->bxor($value)
-		);
-		$nr2 += ($nr2 * 256) ^ $nr;
+		my $value = ((_and_by_char($nr, 63) + $add) * $tmp) + $nr * 256;
 
+		$nr = _xor_by_long($nr, $value);
+		$nr2 += _xor_by_long(($nr2 * 256), $nr);
 		$add += $tmp;
 
 	}
-	return ($nr->band(0x7fffffff), $nr2->band(0x7fffffff));
+	return (_and_by_long($nr, 0x7fffffff), _and_by_long($nr2, 0x7fffffff));
+}
+
+
+sub _and_by_char
+{
+	my $source = shift;
+	my $mask = shift || 0xFF;
+
+	$source = $source % (0xFF + 1) if $source > 0xFF;
+	$mask   = $mask   % (0xFF + 1) if $mask   > 0xFF;
+	return $source & $mask;
+}
+
+
+sub _and_by_long
+{
+	my $source = shift;
+	my $mask = shift || 0xFFFFFFFF;
+
+	$source = $source % (0xFFFFFFFF + 1) if $source > 0xFFFFFFFF;
+	$mask   = $mask   % (0xFFFFFFFF + 1) if $mask   > 0xFFFFFFFF;
+	return $source & $mask;
+}
+
+
+sub _xor_by_long
+{
+	my $source = shift;
+	my $mask = shift || 0;
+
+	$source = $source % (0xFFFFFFFF + 1) if $source > 0xFFFFFFFF;
+	$mask   = $mask   % (0xFFFFFFFF + 1) if $mask   > 0xFFFFFFFF;
+	return $source ^ $mask;
 }
 
 
@@ -871,11 +887,11 @@ with perl5.005_03 build for i386-freebsd.
 
 =back
 
-I believe this module can work with whatever perls which has B<IO::Socket::INET> and B<Math::BigInt> modules. I'll be glad if you give me a report of successful installation of this module on I<rare> OSes.
+I believe this module can work with whatever perls which has B<IO::Socket::INET>. I'll be glad if you give me a report of successful installation of this module on I<rare> OSes.
 
 =head1 SEE ALSO
 
-L<libmysql>, L<IO::Socket::INET>, L<Math::BigInt>
+L<libmysql>, L<IO::Socket::INET>
 
 =head1 AUTHOR
 

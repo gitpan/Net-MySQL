@@ -6,7 +6,6 @@ WriteMakefile(
     'VERSION_FROM'	=> 'MySQL.pm',
     'PREREQ_PM'		=> {
 		'IO::Socket'   => 0.0,
-		'Math::BigInt' => 0.01,
 	},
     ($] >= 5.005 ?
       (ABSTRACT_FROM => 'MySQL.pm',
