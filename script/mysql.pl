@@ -47,6 +47,7 @@ while (my $query = <>) {
 			elsif ($mysql->has_selected_record) {
 				my $record = $mysql->create_record_iterator;
 				while (my $column = $record->each) {
+no warnings;
 					printf "%s\n", join ', ', @$column;
 				}
 			}

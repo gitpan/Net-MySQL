@@ -43,3 +43,13 @@ Revision history for Perl extension Net::MySQL.
 	   * Solaris 2.6 with perl 5.6.1 built for sun4-solaris
 	   * Solaris 2.6 with perl 5.004_04 built for sun4-solaris
 	- The version of Perl to demand was lowered to 5.004.
+
+0.07 Mon Jul 22 11:50:57 JST 2002
+	- Fixed the problem which cannot acquire the field with a length
+	  of 16 bits or more.
+	  (Thanks to "hanif" <hanif@noormohamed.co.uk>)
+	- Fixed some uncanny typoes.
+	  (Thanks to "Lucas Saud" <lucas.marinho@uol.com.br>
+	- Purified the devil ;-)
+	  (Thanks to "jdavidb" and "vsergu"
+	   <http://use.perl.org/~jdavidb/journal/6308>)
