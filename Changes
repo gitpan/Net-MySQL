@@ -1,0 +1,11 @@
+Revision history for Perl extension Net::MySQL.
+
+0.01  Tue Mar 26 16:09:57 JST 2002
+	- original version; created by h2xs 1.21 with options
+		-X -n Net::MySQL
+
+0.02  The Apr  2 21:59:36 JST 2002
+	- Even if insert_id exceeded 255, the purser was cured so that
+	  it might operate correctly.
+	- The data structure was corrected so that Column names might
+	  be acquired correctly.
