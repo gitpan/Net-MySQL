@@ -18,3 +18,11 @@ Revision history for Perl extension Net::MySQL.
 	- Refactoring of '_send_command()' method.
 	- Add create_database() method.
 	- Add drop_database() method.
+
+0.04  Tue May  7 16:10:09 JST 2002
+	- The problem was in the state where SQL longer than 256 bytes
+	  cannot be used in the present condition.
+	  It was corrected by change of a _execute_command() method.
+	  (Thanks to Bob Swarz <rswarz@mitre.org>
+	   and <Corey.Holzer@jwt.com>)
+	- Some typoes on a document were corrected.

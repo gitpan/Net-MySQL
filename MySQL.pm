@@ -5,7 +5,7 @@ use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -259,8 +259,8 @@ sub _execute_command
 	my $sql = shift;
 	my $mysql = $self->{socket};
 
-	my $message =
-		chr(length($sql) + 1). "\x00\x00\x00". $command. $sql;
+	my $message = pack('V', length($sql) + 1). $command. $sql;
+
 	$mysql->send($message, 0);
 	$self->_dump_packet($message) if Net::MySQL->debug;
 
@@ -672,7 +672,7 @@ Net::MySQL - Pure Perl MySQL network protocol interface.
 
   # SLECT example
   $mysql->query(q{SELECT * FROM tablename});
-  my $record = $mysql->create_record_iterator;
+  my $record_set = $mysql->create_record_iterator;
   while (my $record = $record_set->each) {
       printf "First column: %s Next column: %s\n",
           $record->[0], $record->[1];

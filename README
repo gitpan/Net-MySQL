@@ -1,5 +1,5 @@
-Net::MySQL version 0.02
-=======================
+Net::MySQL
+==========
 
 Net::MySQL - Pure Perl MySQL network protocol interface.
 
@@ -66,7 +66,7 @@ mail to <oyama@crayfish.co.jp>.
   * The execution result of the following code:
        perl -MNet::MySQL -e 'print Net::MySQL::Password->scramble("hello", "world!", 1), "\n"'
   * The output result which attached and operated the 'debug'
-    option to NETMYSQL.
+    option to Net::MySQL.
 
 
 COPYRIGHT AND LICENCE
