@@ -21,6 +21,16 @@ This module has been tested on these OSes.
    * FreeBSD 3.4 with perl 5.6.1 build for i386-freebsd
    * FreeBSD 4.5 with perl 5.6.1 build for i386-freebsd
    * FreeBSD 4.0 with perl 5.005_03 build for i386-freebsd
+   * Linux with perl 5.005_03 built for ppc-linux
+   * Linux with perl 5.6.0 bult for i386-linux
+   * Solaris 2.6 with perl 5.6.1 built for sun4-solaris
+   * Solaris 2.6 with perl 5.004_04 built for sun4-solaris
+
+# This list is the environment which I can use by the test usually.
+# Net::MySQL will operate also in much environment which is not in a list.
+
+Can use on Solaris2.6 with perl5.004_04, although 'make test' is
+failure.
 
 
 INSTALLATION
@@ -37,7 +47,7 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  IO::Socket::INET
+  IO::Socket
 
 
 BUG REPORT

@@ -1,11 +1,11 @@
 package Net::MySQL;
 
-use 5.005;
+use 5.004;
 use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.05';
+$VERSION = '0.06';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -31,7 +31,7 @@ use constant COMMAND_CONNECT_OUT    => "\x14";
 
 use constant DEFAULT_PORT_NUMBER => 3306;
 use constant BUFFER_LENGTH       => 1460;
-
+use constant DEFAULT_UNIX_SOCKET => '/tmp/mysql.sock';
 
 
 sub new
@@ -40,13 +40,14 @@ sub new
 	my %args = @_;
 
 	my $self = bless {
-		hostname => $args{hostname} || 'localhost',
-		port     => $args{port}     || DEFAULT_PORT_NUMBER,
-		database => $args{database},
-		user     => $args{user},
-		password => $args{password},
-		timeout  => $args{timeout}  || 60,
-		socket   => undef,
+		hostname   => $args{hostname},
+		unixsocket => $args{unixsocket} || DEFAULT_UNIX_SOCKET,
+		port       => $args{port}       || DEFAULT_PORT_NUMBER,
+		database   => $args{database},
+		user       => $args{user},
+		password   => $args{password},
+		timeout    => $args{timeout}  || 60,
+		socket     => undef,
 		salt                 => '',
 		protocol_version     => undef,
 		client_capabilities  => 0,
@@ -170,12 +171,24 @@ sub _connect
 {
 	my $self = shift;
 
-	my $mysql = IO::Socket::INET->new(
-		PeerAddr => $self->{hostname},
-		PeerPort => $self->{port},
-		Proto    => 'tcp',
-		Timeout  => $self->{timeout} || 60,
-	) or croak "Couldn't connect to $self->{hostname}:$self->{port}/tcp: $@";
+	my $mysql;
+	if ($self->{hostname}) {
+		printf "Use INET Socket: %s %d/tcp\n", $self->{hostname}, $self->{port}
+			if $self->debug;
+		$mysql = IO::Socket::INET->new(
+			PeerAddr => $self->{hostname},
+			PeerPort => $self->{port},
+			Proto    => 'tcp',
+			Timeout  => $self->{timeout} || 60,
+		) or croak "Couldn't connect to $self->{hostname}:$self->{port}/tcp: $@";
+	}
+	else {
+		printf "Use UNIX Socket: %s\n", if $self->debug;
+		$mysql = IO::Socket::UNIX->new(
+			Type => SOCK_STREAM,
+			Peer => $self->{unixsocket},
+		) or croak "Couldn't connect to $self->{unixsocket}: $@";
+	}
 	$mysql->autoflush(1);
 	$self->{socket} = $mysql;
 }
@@ -614,16 +627,15 @@ sub _get_hash
 	my $tmp;
 	my $pwlen = length $password;
 	my $c;
+
 	for (my $i=0; $i < $pwlen; $i++) {
 		my $c = substr $password, $i, 1;
 		next if $c eq ' ' || $c eq "\t";
 		my $tmp = ord $c;
 		my $value = ((_and_by_char($nr, 63) + $add) * $tmp) + $nr * 256;
-
 		$nr = _xor_by_long($nr, $value);
 		$nr2 += _xor_by_long(($nr2 * 256), $nr);
 		$add += $tmp;
-
 	}
 	return (_and_by_long($nr, 0x7fffffff), _and_by_long($nr2, 0x7fffffff));
 }
@@ -632,10 +644,8 @@ sub _get_hash
 sub _and_by_char
 {
 	my $source = shift;
-	my $mask = shift || 0xFF;
+	my $mask   = shift;
 
-	$source = $source % (0xFF + 1) if $source > 0xFF;
-	$mask   = $mask   % (0xFF + 1) if $mask   > 0xFF;
 	return $source & $mask;
 }
 
@@ -645,9 +655,7 @@ sub _and_by_long
 	my $source = shift;
 	my $mask = shift || 0xFFFFFFFF;
 
-	$source = $source % (0xFFFFFFFF + 1) if $source > 0xFFFFFFFF;
-	$mask   = $mask   % (0xFFFFFFFF + 1) if $mask   > 0xFFFFFFFF;
-	return $source & $mask;
+	return _cut_off_to_long($source) & _cut_off_to_long($mask);
 }
 
 
@@ -656,9 +664,22 @@ sub _xor_by_long
 	my $source = shift;
 	my $mask = shift || 0;
 
-	$source = $source % (0xFFFFFFFF + 1) if $source > 0xFFFFFFFF;
-	$mask   = $mask   % (0xFFFFFFFF + 1) if $mask   > 0xFFFFFFFF;
-	return $source ^ $mask;
+	return _cut_off_to_long($source) ^ _cut_off_to_long($mask);
+}
+
+
+sub _cut_off_to_long
+{
+	my $source = shift;
+
+	if ($] >= 5.006) {
+		$source = $source % (0xFFFFFFFF + 1) if $source > 0xFFFFFFFF;
+		return $source;
+	}
+	while ($source > 0xFFFFFFFF) {
+		$source -= 0xFFFFFFFF + 1;
+	}
+	return $source;
 }
 
 
@@ -674,7 +695,7 @@ Net::MySQL - Pure Perl MySQL network protocol interface.
   use Net::MySQL;
   
   my $mysql = Net::MySQL->new(
-      hostname => 'mysql.example.jp',
+      # hostname => 'mysql.example.jp',   # Default use UNIX socket
       database => 'your_database_name',
       user     => 'user',
       password => 'password'
@@ -697,7 +718,7 @@ Net::MySQL - Pure Perl MySQL network protocol interface.
 
 =head1 DESCRIPTION
 
-Net::MySQL is a Pure Perl client interface for the MySQL database. This module implements network protool between server and client of MySQL, thus you don't need external MySQL client library like libmysqlclient for this module to work. It means this module enables you to connect to MySQL server from some operation systems which MySQL is not ported. How nifty!
+Net::MySQL is a Pure Perl client interface for the MySQL database. This module implements network protocol between server and client of MySQL, thus you don't need external MySQL client library like libmysqlclient for this module to work. It means this module enables you to connect to MySQL server from some operation systems which MySQL is not ported. How nifty!
 
 Since this module's final goal is to completely replace DBD::mysql, API is made similar to that of DBI.
 
@@ -748,19 +769,26 @@ The each() method takes out the reference result of one line at a time, and the 
     use strict;
 
     my $mysql = Net::MySQL->new(
-        hostname => $host,
-        database => $database,
-        user     => $user,
-        password => $password,
+        unixsocket => $path_to_socket,
+        hostname   => $host,
+        database   => $database,
+        user       => $user,
+        password   => $password,
     );
 
 The constructor of Net::MySQL. Connection with MySQL daemon is established and the object is returned. Argument hash contains following parameters:
 
 =over 8
 
+=item unixsocket
+
+Path of the UNIX socket where MySQL daemon. default is F</tmp/mysql.sock>.
+Supposing I<hostname> is omitted, it will connect by I<UNIX Socket>.
+
 =item hostname
 
 Name of the host where MySQL daemon runs.
+Supposing I<hostname> is specified, it will connect by I<INET Socket>.
 
 =item port
 
@@ -885,13 +913,29 @@ with perl5.6.1 build for i386-freebsd.
 
 with perl5.005_03 build for i386-freebsd.
 
+=item * Linux
+
+with perl 5.005_03 built for ppc-linux.
+
+with perl 5.6.0 bult for i386-linux.
+
+=item * Solaris 2.6 (SPARC)
+
+with perl 5.6.1 built for sun4-solaris.
+
+with perl 5.004_04 built for sun4-solaris.
+
+Can use on Solaris2.6 with perl5.004_04, although I<make test> is failure.
+
 =back
 
-I believe this module can work with whatever perls which has B<IO::Socket::INET>. I'll be glad if you give me a report of successful installation of this module on I<rare> OSes.
+This list is the environment which I can use by the test usually. Net::MySQL will operate  also in much environment which is not in a list.
+
+I believe this module can work with whatever perls which has B<IO::Socket>. I'll be glad if you give me a report of successful installation of this module on I<rare> OSes.
 
 =head1 SEE ALSO
 
-L<libmysql>, L<IO::Socket::INET>
+L<libmysql>, L<IO::Socket>
 
 =head1 AUTHOR
 

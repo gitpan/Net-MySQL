@@ -10,11 +10,10 @@ use constant QUIT_MESSAGE    => "Bye\n";
 
 
 my %option;
-getopts '?vh:u:P:', \%option;
+getopts '?vh:u:P:s:d', \%option;
 my $database = shift;
 show_version() if $option{v};
 show_usage()   if $option{'?'} || ! defined $database;
-$option{h} ||= 'localhost';
 $option{u} ||= $ENV{USER};
 $option{P} ||= 3306;
 
@@ -26,12 +25,13 @@ system 'stty echo';
 print "\n";
 
 my $mysql = Net::MySQL->new(
-	hostname => $option{h},
-	port     => $option{P},
-	database => $database,
-	user     => $option{u},
-	password => $password,
-	debug => 0,
+	hostname   => $option{h},
+	unixsocket => $option{s},
+	port       => $option{P},
+	database   => $database,
+	user       => $option{u},
+	password   => $password,
+	debug      => $option{d},
 );
 print WELCOME_MESSAGE;
 print PROMPT;
@@ -69,16 +69,17 @@ exit;
 sub show_usage
 {
 	die <<__USAGE__;
-Usage: mysq.pl [-?v] -h HOSTNAME [-P PORT] [-u USER] DATABASE
+Usage: mysq.pl [-?v] [-s /tmp/mysql.sock] [-h HOSTNAME] [-P PORT] [-u USER] DATABASE
 
   -?   Display this help and exit.
+  -s   Path to Unix socket. (default /tmp/mysql.sock)
   -h   Connect to host.
   -P   Port number to user for connection.(default 3306)
   -u   User for login if not current user.
   -v   Output version information and exit.
 
   Example:
-    % mysql.pl -h mysql.example.jp -u root mydatabase
+    % mysql.pl -u root mydatabase
 __USAGE__
 }
 

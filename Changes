@@ -30,4 +30,16 @@ Revision history for Perl extension Net::MySQL.
 0.05 Fri Jun 28 15:46:35 JST 2002
 	- Independent from Math::BigInt module.
 	  Calculation of password hash became high-speed by this
-	  correction. 
+	  correction.
+
+0.06 Wed Jul 10 19:11:40 JST 2002
+	- When old Perl was used, the problem which cannot encode a
+	  password correctly was corrected.
+	  (Thanks to Michael P. Soulier <msoulier@nortelnetworks.com>)
+	- UNIX Socket connection support.
+	- OS tested as use is possible is added.
+	   * Linux with perl 5.005_03 built for ppc-linux
+	   * Linux with perl 5.6.0 bult for i386-linux
+	   * Solaris 2.6 with perl 5.6.1 built for sun4-solaris
+	   * Solaris 2.6 with perl 5.004_04 built for sun4-solaris
+	- The version of Perl to demand was lowered to 5.004.
