@@ -53,7 +53,7 @@ This module requires these other modules and libraries:
 BUG REPORT
 
 When a problem is found, append the following elements and give
-mail to <oyama@crayfish.co.jp>.
+mail to <oyama@module.jp>.
 
   * The version and platform of Perl which are used.
   * The version and platform of MySQL server.

@@ -5,7 +5,7 @@ use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.07';
+$VERSION = '0.08';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -34,7 +34,8 @@ use constant BUFFER_LENGTH       => 1460;
 use constant DEFAULT_UNIX_SOCKET => '/tmp/mysql.sock';
 
 
-sub new {
+sub new
+{
 	my $class = shift;
 	my %args = @_;
 
@@ -58,7 +59,8 @@ sub new {
 }
 
 
-sub query {
+sub query
+{
 	my $self = shift;
 	my $sql = join '', @_;
 	my $mysql = $self->{socket};
@@ -67,7 +69,8 @@ sub query {
 }
 
 
-sub create_database {
+sub create_database
+{
 	my $self = shift;
 	my $db_name = shift;
 	my $mysql = $self->{socket};
@@ -76,7 +79,8 @@ sub create_database {
 }
 
 
-sub drop_database {
+sub drop_database
+{
 	my $self = shift;
 	my $db_name = shift;
 	my $mysql = $self->{socket};
@@ -85,7 +89,8 @@ sub drop_database {
 }
 
 
-sub close {
+sub close
+{
 	my $self = shift;
 	my $mysql = $self->{socket};
 	return unless $mysql->can('send');
@@ -98,19 +103,22 @@ sub close {
 }
 
 
-sub get_affected_rows_length {
+sub get_affected_rows_length
+{
 	my $self = shift;
 	$self->{affected_rows_length};
 }
 
 
-sub get_insert_id {
+sub get_insert_id
+{
 	my $self = shift;
 	$self->{insert_id};
 }
 
 
-sub create_record_iterator {
+sub create_record_iterator
+{
 	my $self = shift;
 	return undef unless $self->has_selected_record;
 
@@ -123,38 +131,44 @@ sub create_record_iterator {
 }
 
 
-sub has_selected_record {
+sub has_selected_record
+{
 	my $self = shift;
 	$self->{selected_record} ? 1 : undef;
 }
 
 
-sub is_error {
+sub is_error
+{
 	my $self = shift;
 	$self->{error_code} ? 1 : undef;
 }
 
 
-sub get_error_code {
+sub get_error_code
+{
 	my $self = shift;
 	$self->{error_code};
 }
 
 
-sub get_error_message {
+sub get_error_message
+{
 	my $self = shift;
 	$self->{server_message};
 }
 
 
-sub debug {
+sub debug
+{
 	my $class = shift;
 	$DEBUG = shift if @_;
 	$DEBUG;
 }
 
 
-sub _connect {
+sub _connect
+{
 	my $self = shift;
 
 	my $mysql;
@@ -180,7 +194,8 @@ sub _connect {
 }
 
 
-sub _get_server_information {
+sub _get_server_information
+{
 	my $self = shift;
 	my $mysql = $self->{socket};
 
@@ -212,7 +227,8 @@ sub _get_server_information {
 }
 
 
-sub _request_authentication {
+sub _request_authentication
+{
 	my $self = shift;
 	my $mysql = $self->{socket};
 	$self->_send_login_message();
@@ -231,7 +247,8 @@ sub _request_authentication {
 }
 
 
-sub _send_login_message {
+sub _send_login_message
+{
 	my $self = shift;
 	my $mysql = $self->{socket};
 
@@ -248,7 +265,8 @@ sub _send_login_message {
 
 
 
-sub _execute_command {
+sub _execute_command
+{
 	my $self = shift;
 	my $command = shift;
 	my $sql = shift;
@@ -279,7 +297,8 @@ sub _execute_command {
 }
 
 
-sub _initialize {
+sub _initialize
+{
 	my $self = shift;
 	$self->_connect;
 	$self->_get_server_information;
@@ -287,7 +306,8 @@ sub _initialize {
 }
 
 
-sub _set_error_by_packet {
+sub _set_error_by_packet
+{
 	my $self = shift;
 	my $packet = shift;
 
@@ -298,7 +318,8 @@ sub _set_error_by_packet {
 }
 
 
-sub _get_record_by_server {
+sub _get_record_by_server
+{
 	my $self = shift;
 	my $packet = shift;
 	my $mysql = $self->{socket};
@@ -314,7 +335,8 @@ sub _get_record_by_server {
 }
 
 
-sub _get_affected_rows_information_by_packet {
+sub _get_affected_rows_information_by_packet
+{
 	my $self = shift;
 	my $packet = shift;
 
@@ -325,7 +347,8 @@ sub _get_affected_rows_information_by_packet {
 }
 
 
-sub _is_error {
+sub _is_error
+{
 	my $self = shift;
 	my $packet = shift;
 	return 1 if length $packet < 4;
@@ -333,7 +356,8 @@ sub _is_error {
 }
 
 
-sub _is_select_query_result {
+sub _is_select_query_result
+{
 	my $self = shift;
 	my $packet = shift;
 	return undef if $self->_is_error($packet);
@@ -341,7 +365,8 @@ sub _is_select_query_result {
 }
 
 
-sub _is_update_query_result {
+sub _is_update_query_result
+{
 	my $self = shift;
 	my $packet = shift;
 	return undef if $self->_is_error($packet);
@@ -349,28 +374,32 @@ sub _is_update_query_result {
 }
 
 
-sub _get_result_length {
+sub _get_result_length
+{
 	my $self = shift;
 	my $packet = shift;
 	ord(substr $packet, 0, 1)
 }
 
 
-sub _get_column_length {
+sub _get_column_length
+{
 	my $self = shift;
 	my $packet = shift;
 	ord(substr $packet, 4);
 }
 
 
-sub _get_affected_rows_length {
+sub _get_affected_rows_length
+{
 	my $self = shift;
 	my $packet = shift;
 	ord(substr $packet, 5, 1);
 }
 
 
-sub _get_insert_id {
+sub _get_insert_id
+{
 	my $self = shift;
 	my $packet = shift;
 	return ord(substr $packet, 6, 1) if ord(substr $packet, 6, 1) != 0xfc;
@@ -378,7 +407,8 @@ sub _get_insert_id {
 }
 
 
-sub _get_server_message {
+sub _get_server_message
+{
 	my $self = shift;
 	my $packet = shift;
 	return '' if length $packet < 7;
@@ -386,7 +416,8 @@ sub _get_server_message {
 }
 
 
-sub _get_error_code {
+sub _get_error_code
+{
 	my $self = shift;
 	my $packet = shift;
 	$self->_is_error($packet)
@@ -395,7 +426,8 @@ sub _get_error_code {
 }
 
 
-sub _reset_status {
+sub _reset_status
+{
 	my $self = shift;
 	$self->{insert_id}       = 0;
 	$self->{server_message}  = '';
@@ -404,13 +436,15 @@ sub _reset_status {
 }
 
 
-sub _has_next_packet {
+sub _has_next_packet
+{
 	my $self = shift;
 	substr($_[0], -1) ne "\xfe";
 }
 
 
-sub _dump_packet {
+sub _dump_packet
+{
 	my $self = shift;
 	my $packet = shift;
 
@@ -432,14 +466,17 @@ use strict;
 use constant NULL_COLUMN           => 251;
 use constant UNSIGNED_CHAR_COLUMN  => 251;
 use constant UNSIGNED_SHORT_COLUMN => 252;
-use constant UNSIGNED_LONG_COLUMN  => 253;
-use constant UNSIGNED_CHAR_LENGTH     => 1;
-use constant UNSIGNED_SHORT_LENGTH    => 2;
-use constant UNSIGNED_LONG_LENGTH     => 4;
-use constant UNSIGNED_QUAD_LENGTH => 8;
+use constant UNSIGNED_INT24_COLUMN => 253;
+use constant UNSIGNED_INT32_COLUMN => 254;
+use constant UNSIGNED_CHAR_LENGTH  => 1;
+use constant UNSIGNED_SHORT_LENGTH => 2;
+use constant UNSIGNED_INT24_LENGTH => 3;
+use constant UNSIGNED_INT32_LENGTH => 4;
+use constant UNSIGNED_INT32_PAD_LENGTH => 4;
 
 
-sub new {
+sub new
+{
 	my $class = shift;
 	my $packet = shift;
 	bless {
@@ -450,14 +487,16 @@ sub new {
 }
 
 
-sub parse {
+sub parse
+{
 	my $self = shift;
 	$self->_get_column_length;
 	$self->_get_column_name;
 }
 
 
-sub each {
+sub each
+{
 	my $self = shift;
 	my @result;
 	return undef if $self->is_end_of_packet;
@@ -470,25 +509,29 @@ sub each {
 }
 
 
-sub is_end_of_packet {
+sub is_end_of_packet
+{
 	my $self = shift;
 	length $self->{packet} <= $self->{position} + 1;
 }
 
 
-sub get_field_length {
+sub get_field_length
+{
 	my $self = shift;
 	$self->{column_length};
 }
 
 
-sub get_field_names {
+sub get_field_names
+{
 	my $self = shift;
 	map { $_->{column} } @{$self->{column}};
 }
 
 
-sub _get_column_length {
+sub _get_column_length
+{
 	my $self = shift;
 	$self->{position} += 4;
 	$self->{column_length} = ord substr $self->{packet}, $self->{position}, 1;
@@ -498,7 +541,8 @@ sub _get_column_length {
 }
 
 
-sub _get_column_name {
+sub _get_column_name
+{
 	my $self = shift;
 	for my $i (1.. $self->{column_length}) {
 		push @{$self->{column}}, {
@@ -515,7 +559,8 @@ sub _get_column_name {
 }
 
 
-sub _get_string_and_seek_position {
+sub _get_string_and_seek_position
+{
 	my $self = shift;
 
 	my $length = $self->_get_field_length();
@@ -527,7 +572,8 @@ sub _get_string_and_seek_position {
 }
 
 
-sub _get_field_length {
+sub _get_field_length
+{
 	my $self = shift;
 
 	my $head = ord substr(
@@ -542,6 +588,7 @@ sub _get_field_length {
 		return $head;
 	}
 	elsif ($head == UNSIGNED_SHORT_COLUMN) {
+		warn "in short";
 		my $length = unpack 'v', substr(
 			$self->{packet},
 			$self->{position},
@@ -550,22 +597,30 @@ sub _get_field_length {
 		$self->{position} += UNSIGNED_SHORT_LENGTH;
 		return $length;
 	}
-	elsif ($head == UNSIGNED_LONG_COLUMN) {
-		my $length = unpack 'V', substr(
-			$self->{packet},
-			$self->{position},
-			UNSIGNED_LONG_LENGTH
+	elsif ($head == UNSIGNED_INT24_COLUMN) {
+		warn "in int23";
+		my $int24 = substr(
+			$self->{packet}, $self->{position},
+			UNSIGNED_INT24_LENGTH
 		);
-		$self->{position} += UNSIGNED_LONG_LENGTH;
+		my $length = unpack('C', substr($int24, 0, 1))
+		          + (unpack('C', substr($int24, 1, 1)) << 8)
+			  + (unpack('C', substr($int24, 2, 1)) << 16);
+		$self->{position} += UNSIGNED_INT24_LENGTH;
 		return $length;
 	}
 	else {
-		my $length = unpack 'Q', substr(
-			$self->{packet},
-			$self->{position},
-			UNSIGNED_QUAD_LENGTH
+		warn "in int32";
+		my $int32 = substr(
+			$self->{packet}, $self->{position},
+			UNSIGNED_INT32_LENGTH
 		);
-		$self->{position} += UNSIGNED_QUAD_LENGTH;
+		my $length = unpack('C', substr($int32, 0, 1))
+		          + (unpack('C', substr($int32, 1, 1)) << 8)
+			  + (unpack('C', substr($int32, 2, 1)) << 16)
+			  + (unpack('C', substr($int32, 3, 1)) << 24);
+		$self->{position} += UNSIGNED_INT32_LENGTH;
+		$self->{position} += UNSIGNED_INT32_PAD_LENGTH;
 		return $length;
 	}
 }
@@ -574,7 +629,8 @@ sub _get_field_length {
 package Net::MySQL::Password;
 use strict;
 
-sub scramble {
+sub scramble
+{
 	my $class = shift;
 	my $password = shift;
 	my $hash_seed = shift;
@@ -625,7 +681,8 @@ sub scramble {
 }
 
 
-sub _get_hash {
+sub _get_hash
+{
 	my $password = shift;
 
 	my $nr = 1345345333;
@@ -648,7 +705,8 @@ sub _get_hash {
 }
 
 
-sub _and_by_char {
+sub _and_by_char
+{
 	my $source = shift;
 	my $mask   = shift;
 
@@ -656,7 +714,8 @@ sub _and_by_char {
 }
 
 
-sub _and_by_long {
+sub _and_by_long
+{
 	my $source = shift;
 	my $mask = shift || 0xFFFFFFFF;
 
@@ -664,7 +723,8 @@ sub _and_by_long {
 }
 
 
-sub _xor_by_long {
+sub _xor_by_long
+{
 	my $source = shift;
 	my $mask = shift || 0;
 
@@ -672,7 +732,8 @@ sub _xor_by_long {
 }
 
 
-sub _cut_off_to_long {
+sub _cut_off_to_long
+{
 	my $source = shift;
 
 	if ($] >= 5.006) {
@@ -942,7 +1003,7 @@ L<libmysql>, L<IO::Socket>
 
 =head1 AUTHOR
 
-Hiroyuki OYAMA E<lt>oyama@crayfish.co.jpE<gt>
+Hiroyuki OYAMA E<lt>oyama@module.jpE<gt>
 
 =head1 COPYRIGHT AND LICENCE
 

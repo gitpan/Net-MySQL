@@ -9,5 +9,5 @@ WriteMakefile(
 	},
     ($] >= 5.005 ?
       (ABSTRACT_FROM => 'MySQL.pm',
-       AUTHOR     => 'Hiroyuki OYAMA <oyama@crayfish.co.jp>') : ()),
+       AUTHOR     => 'Hiroyuki OYAMA <oyama@module.jp>') : ()),
 );
