@@ -5,7 +5,7 @@ use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -29,7 +29,6 @@ use constant COMMAND_BINLOG_DUMP    => "\x12";
 use constant COMMAND_TABLE_DUMP     => "\x13";
 use constant COMMAND_CONNECT_OUT    => "\x14";
 
-use constant SUCCEEDED_LOGIN => "\x03\x00\x00\x02\x00\x00\x00";
 use constant DEFAULT_PORT_NUMBER => 3306;
 use constant BUFFER_LENGTH       => 1460;
 
@@ -65,25 +64,27 @@ sub query
 	my $sql = join '', @_;
 	my $mysql = $self->{socket};
 
-	$self->_send_query_message($sql);
+	return $self->_execute_command(COMMAND_QUERY, $sql);
+}
 
-	my $result;
-	$mysql->recv($result, BUFFER_LENGTH, 0);
-	$self->_dump_packet($result) if Net::MySQL->debug;
-	$self->_reset_status;
 
-	if ($self->_is_error($result)) {
-		return $self->_set_error_by_packet($result);
-	}
-	elsif ($self->_is_select_query_result($result)) {
-		return $self->_get_record_by_server($result);
-	}
-	elsif ($self->_is_update_query_result($result)){
-		return $self->_get_affected_rows_information_by_packet($result);
-	}
-	else {
-		croak 'Unknown Result: '. $self->_get_result_length($result). 'byte';
-	}
+sub create_database
+{
+	my $self = shift;
+	my $db_name = shift;
+	my $mysql = $self->{socket};
+
+	return $self->_execute_command(COMMAND_CREATE_DB, $db_name);
+}
+
+
+sub drop_database
+{
+	my $self = shift;
+	my $db_name = shift;
+	my $mysql = $self->{socket};
+
+	return $self->_execute_command(COMMAND_DROP_DB, $db_name);
 }
 
 
@@ -205,10 +206,11 @@ sub _get_server_information
 	printf "Server Version: %s\n", $self->{server_version}
 		if Net::MySQL->debug;
 
-	$i += $string_end;
-	$self->{server_thread_id} = ord substr $message, $i, 4;
-	$i += 4 + 1;
+	$i += $string_end + 1;
+	$self->{server_thread_id} = unpack 'v', substr $message, $i, 2;
+	$i += 4;
 	$self->{salt} = substr $message, $i, 8;
+	printf "Salt: %s\n", $self->{salt} if Net::MySQL->debug;
 }
 
 
@@ -221,7 +223,7 @@ sub _request_authentication
 	my $auth_result;
 	$mysql->recv($auth_result, BUFFER_LENGTH, 0);
 	$self->_dump_packet($auth_result) if Net::MySQL->debug;
-	if ($auth_result ne SUCCEEDED_LOGIN) {
+	if ($self->_is_error($auth_result)) {
 		$mysql->close;
 		if (length $auth_result < 7) {
 			croak "Timeout of authentication";
@@ -249,16 +251,36 @@ sub _send_login_message
 }
 
 
-sub _send_query_message
+
+sub _execute_command
 {
 	my $self = shift;
+	my $command = shift;
 	my $sql = shift;
 	my $mysql = $self->{socket};
 
-	my $query_message =
-		chr(length($sql) + 1). "\x00\x00\x00". COMMAND_QUERY. $sql;
-	$mysql->send($query_message, 0);
-	$self->_dump_packet($query_message) if Net::MySQL->debug;
+	my $message =
+		chr(length($sql) + 1). "\x00\x00\x00". $command. $sql;
+	$mysql->send($message, 0);
+	$self->_dump_packet($message) if Net::MySQL->debug;
+
+	my $result;
+	$mysql->recv($result, BUFFER_LENGTH, 0);
+	$self->_dump_packet($result) if Net::MySQL->debug;
+	$self->_reset_status;
+
+	if ($self->_is_error($result)) {
+		return $self->_set_error_by_packet($result);
+	}
+	elsif ($self->_is_select_query_result($result)) {
+		return $self->_get_record_by_server($result);
+	}
+	elsif ($self->_is_update_query_result($result)){
+		return $self->_get_affected_rows_information_by_packet($result);
+	}
+	else {
+		croak 'Unknown Result: '. $self->_get_result_length($result). 'byte';
+	}
 }
 
 
@@ -316,6 +338,7 @@ sub _is_error
 {
 	my $self = shift;
 	my $packet = shift;
+	return 1 if length $packet < 4;
 	ord(substr $packet, 4) == 255;
 }
 
@@ -745,6 +768,20 @@ The exchanged packet will be outputted if a true value is given.
 
 =back
 
+
+=item create_database(DB_NAME)
+
+A create_DATABASE() method creates a database by the specified name.
+
+    $mysql->create_database('example_db');
+    die $mysql->get_error_message if $mysql->is_error;
+
+=item drop_database(DB_NAME)
+
+A drop_database() method deletes the database of the specified name.
+
+    $mysql->drop_database('example_db');
+    die $mysql->get_error_message if $mysql->is_error;
 
 =item query(SQL_STRING)
 

@@ -9,3 +9,12 @@ Revision history for Perl extension Net::MySQL.
 	  it might operate correctly.
 	- The data structure was corrected so that Column names might
 	  be acquired correctly.
+
+0.03  Mon Apr 15 19:05:17 JST 2002
+	- The problem which is not connectable with MySQL daemon of
+	  some versions (ver 3.23.28 gamma) was corrected.
+	  (Thanks to Kawai Takanori <GCD00051@nifty.ne.jp>
+	   and Tatsuhiko Miyagawa <miyagawa@edge.co.jp>)
+	- Refactoring of '_send_command()' method.
+	- Add create_database() method.
+	- Add drop_database() method.
