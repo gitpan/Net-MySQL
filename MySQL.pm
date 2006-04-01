@@ -5,7 +5,7 @@ use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.08';
+$VERSION = '0.09';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -47,7 +47,7 @@ sub new
 		user       => $args{user},
 		password   => $args{password},
 		timeout    => $args{timeout}  || 60,
-		socket     => undef,
+		'socket'   => undef,
 		salt                 => '',
 		protocol_version     => undef,
 		client_capabilities  => 0,
@@ -223,7 +223,21 @@ sub _get_server_information
 	$self->{server_thread_id} = unpack 'v', substr $message, $i, 2;
 	$i += 4;
 	$self->{salt} = substr $message, $i, 8;
+	#
+	$i += 8+1;
+	if (length $message >= $i + 1) {
+		$i += 1;
+	}
+	if (length $message >= $i + 18) {
+		# get server_language
+		# get server_status
+	}
+	$i += 18 - 1;
+	if (length $message >= $i + 12 - 1) {
+		$self->{salt} .= substr $message, $i, 12;
+	}
 	printf "Salt: %s\n", $self->{salt} if Net::MySQL->debug;
+
 }
 
 
@@ -251,13 +265,16 @@ sub _send_login_message
 {
 	my $self = shift;
 	my $mysql = $self->{socket};
-
-	my $body = "\0\0\x01\x8d\x00\00\00\00". join "\0",
+	my $body = "\0\0\x01\x0d\xa6\03\0\0\0\0\x01".
+		"\x21\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0".
+		 join "\0",
 		$self->{user},
+		"\x14".
 		Net::MySQL::Password->scramble(
 			$self->{password}, $self->{salt}, $self->{client_capabilities}
-		),
-		$self->{database};
+		);
+	$body .= $self->{database};
+	$body .= "\0";
 	my $login_message = chr(length($body)-3). $body;
 	$mysql->send($login_message, 0);
 	$self->_dump_packet($login_message) if Net::MySQL->debug;
@@ -273,7 +290,6 @@ sub _execute_command
 	my $mysql = $self->{socket};
 
 	my $message = pack('V', length($sql) + 1). $command. $sql;
-
 	$mysql->send($message, 0);
 	$self->_dump_packet($message) if Net::MySQL->debug;
 
@@ -323,7 +339,6 @@ sub _get_record_by_server
 	my $self = shift;
 	my $packet = shift;
 	my $mysql = $self->{socket};
-
 	$self->_get_column_length($packet);
 	while ($self->_has_next_packet($packet)) {
 		my $next_result;
@@ -394,7 +409,8 @@ sub _get_affected_rows_length
 {
 	my $self = shift;
 	my $packet = shift;
-	ord(substr $packet, 5, 1);
+	my $pos = 5;
+	return Net::MySQL::Util::get_field_length($packet, \$pos);
 }
 
 
@@ -439,23 +455,27 @@ sub _reset_status
 sub _has_next_packet
 {
 	my $self = shift;
-	substr($_[0], -1) ne "\xfe";
+	#substr($_[0], -1) ne "\xfe";
+	return substr($_[0], -5) ne "\xfe\0\0\x22\x00";
 }
 
 
-sub _dump_packet
-{
-	my $self = shift;
-	my $packet = shift;
-
-	my ($method_name) = (caller(1))[3];
-	printf "%s():\n%s\n",
-		$method_name,
-		join ' ', map { sprintf "%02x", ord $_ } split //, $packet;
-	printf "%s():\n%s\n",
-		$method_name,
-		join '  ', map { m/[\d \w\._]/ ? $_ : '.' } split //, $packet;
-	print "--\n";
+sub _dump_packet {
+    my $self = shift;
+    my $packet = shift;
+    my ($method_name) = (caller(1))[3];
+    my $str = sprintf "%s():\n", $method_name;
+    while ($packet =~ /(.{1,16})/sg) {
+        my $line = $1;
+        $str .= join ' ', map {sprintf '%02X', ord $_} split //, $line;
+        $str .= '   ' x (16 - length $line);
+        $str .= '  ';
+        $str .= join '', map {
+            sprintf '%s', (/[\w\d\*\,\?\%\=\'\;\(\)\.-]/) ? $_ : '.'
+        } split //, $line;
+        $str .= "\n"; 
+    }
+    print $str;
 }
 
 
@@ -505,6 +525,7 @@ sub each
 		push @result, $self->_get_string_and_seek_position;
 	}
 	$self->{position} += 4;
+
 	return \@result;
 }
 
@@ -512,7 +533,7 @@ sub each
 sub is_end_of_packet
 {
 	my $self = shift;
-	length $self->{packet} <= $self->{position} + 1;
+	return substr($self->{packet}, $self->{position}, 1) eq "\xFE";
 }
 
 
@@ -544,16 +565,23 @@ sub _get_column_length
 sub _get_column_name
 {
 	my $self = shift;
-	for my $i (1.. $self->{column_length}) {
-		push @{$self->{column}}, {
-			table  => $self->_get_string_and_seek_position,
-			column => $self->_get_string_and_seek_position,
-		};
-		$self->{position} += 14;
-	}
-	$self->{position} += 5;
 
-	printf "Column name: %s\n",
+	for my $i (1.. $self->{column_length}) {
+		$self->_get_string_and_seek_position;
+		$self->_get_string_and_seek_position;
+		my $table = $self->_get_string_and_seek_position;
+		$self->_get_string_and_seek_position;
+		my $column = $self->_get_string_and_seek_position;
+		$self->_get_string_and_seek_position;
+		push @{$self->{column}}, {
+			table  => $table,
+			column => $column,
+		};
+		$self->_get_string_and_seek_position;
+		$self->{position} += 4;
+	}
+	$self->{position} += 9;
+	printf "Column name: '%s'\n",
 		join ", ", map { $_->{column} } @{$self->{column}}
 			if Net::MySQL->debug;
 }
@@ -564,6 +592,7 @@ sub _get_string_and_seek_position
 	my $self = shift;
 
 	my $length = $self->_get_field_length();
+
 	return undef unless defined $length;
 
 	my $string = substr $self->{packet}, $self->{position}, $length;
@@ -575,58 +604,124 @@ sub _get_string_and_seek_position
 sub _get_field_length
 {
 	my $self = shift;
+	return Net::MySQL::Util::get_field_length($self->{packet}, \$self->{position});
+}
+
+
+package Net::MySQL::Util;
+use strict;
+
+use constant NULL_COLUMN           => 251;
+use constant UNSIGNED_CHAR_COLUMN  => 251;
+use constant UNSIGNED_SHORT_COLUMN => 252;
+use constant UNSIGNED_INT24_COLUMN => 253;
+use constant UNSIGNED_INT32_COLUMN => 254;
+use constant UNSIGNED_CHAR_LENGTH  => 1;
+use constant UNSIGNED_SHORT_LENGTH => 2;
+use constant UNSIGNED_INT24_LENGTH => 3;
+use constant UNSIGNED_INT32_LENGTH => 4;
+use constant UNSIGNED_INT32_PAD_LENGTH => 4;
+
+
+sub get_field_length
+{
+	my $packet = shift;
+	my $pos = shift;
 
 	my $head = ord substr(
-		$self->{packet},
-		$self->{position},
+		$packet,
+		$$pos,
 		UNSIGNED_CHAR_LENGTH
 	);
-	$self->{position} += UNSIGNED_CHAR_LENGTH;
+	$$pos += UNSIGNED_CHAR_LENGTH;
 
 	return undef if $head == NULL_COLUMN;
 	if ($head < UNSIGNED_CHAR_COLUMN) {
 		return $head;
 	}
 	elsif ($head == UNSIGNED_SHORT_COLUMN) {
-		warn "in short";
 		my $length = unpack 'v', substr(
-			$self->{packet},
-			$self->{position},
+			$packet,
+			$$pos,
 			UNSIGNED_SHORT_LENGTH
 		);
-		$self->{position} += UNSIGNED_SHORT_LENGTH;
+		$$pos += UNSIGNED_SHORT_LENGTH;
 		return $length;
 	}
 	elsif ($head == UNSIGNED_INT24_COLUMN) {
-		warn "in int23";
 		my $int24 = substr(
-			$self->{packet}, $self->{position},
+			$packet, $$pos,
 			UNSIGNED_INT24_LENGTH
 		);
 		my $length = unpack('C', substr($int24, 0, 1))
 		          + (unpack('C', substr($int24, 1, 1)) << 8)
 			  + (unpack('C', substr($int24, 2, 1)) << 16);
-		$self->{position} += UNSIGNED_INT24_LENGTH;
+		$$pos += UNSIGNED_INT24_LENGTH;
 		return $length;
 	}
 	else {
-		warn "in int32";
 		my $int32 = substr(
-			$self->{packet}, $self->{position},
+			$packet, $$pos,
 			UNSIGNED_INT32_LENGTH
 		);
 		my $length = unpack('C', substr($int32, 0, 1))
 		          + (unpack('C', substr($int32, 1, 1)) << 8)
 			  + (unpack('C', substr($int32, 2, 1)) << 16)
 			  + (unpack('C', substr($int32, 3, 1)) << 24);
-		$self->{position} += UNSIGNED_INT32_LENGTH;
-		$self->{position} += UNSIGNED_INT32_PAD_LENGTH;
+		$$pos += UNSIGNED_INT32_LENGTH;
+		$$pos += UNSIGNED_INT32_PAD_LENGTH;
 		return $length;
 	}
 }
 
 
+
 package Net::MySQL::Password;
+use strict;
+use Digest::SHA1;
+
+sub scramble {
+	my $class = shift;
+	my $password = shift;
+	my $hash_seed = shift;
+	return '' unless $password;
+	return '' if length $password == 0;
+	return _make_scrambled_password($hash_seed, $password);
+}
+
+
+sub _make_scrambled_password {
+	my $message = shift;
+	my $password = shift;
+
+	my $ctx = Digest::SHA1->new;
+	$ctx->reset;
+	$ctx->add($password);
+	my $stage1 = $ctx->digest;
+
+	$ctx->reset;
+	$ctx->add($stage1);
+	my $stage2 = $ctx->digest;
+
+	$ctx->reset;
+	$ctx->add($message);
+	$ctx->add($stage2);
+	my $result = $ctx->digest;
+	return _my_crypt($result, $stage1);
+}
+
+sub _my_crypt {
+	my $s1 = shift;
+	my $s2 = shift;
+	my $l = length($s1) - 1;
+	my $result = '';
+	for my $i (0..$l) {
+		$result .= pack 'C', (unpack('C', substr($s1, $i, 1)) ^ unpack('C', substr($s2, $i, 1)));
+	}
+	return $result;
+}
+
+package Net::MySQL::Password32;
 use strict;
 
 sub scramble

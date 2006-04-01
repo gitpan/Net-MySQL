@@ -18,12 +18,12 @@ $option{u} ||= $ENV{USER};
 $option{P} ||= 3306;
 
 my $password;
-system 'stty -echo';
-print 'Enter password: ';
-chomp($password = <STDIN>);
-system 'stty echo';
-print "\n";
-
+#system 'stty -echo';
+#print 'Enter password: ';
+#chomp($password = <STDIN>);
+#system 'stty echo';
+#print "\n";
+$password='hugethunderb01t!!';
 my $mysql = Net::MySQL->new(
 	hostname   => $option{h},
 	unixsocket => $option{s},

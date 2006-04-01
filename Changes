@@ -1,5 +1,11 @@
 Revision history for Perl extension Net::MySQL.
 
+0.09 Fri Mar 31 22:45:37 JST 2006
+	- Refine packet dump.
+	- Support 4.1 authenticaiton protocol.
+	- Over 252 affected rows support.
+	- Thanks Hotel "DAN".
+
 0.08 Fri Jan 24 19:33:08 JST 2003
 	- Bugfix _get_field_length(). to platform independent.
 	  (Thanks to Aigars Grins, http://rt.cpan.org/NoAuth/Bug.html?id=1980)
