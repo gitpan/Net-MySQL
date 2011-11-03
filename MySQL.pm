@@ -5,7 +5,7 @@ use IO::Socket;
 use Carp;
 use vars qw($VERSION $DEBUG);
 use strict;
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 use constant COMMAND_SLEEP          => "\x00";
 use constant COMMAND_QUIT           => "\x01";
@@ -997,7 +997,7 @@ A query() method transmits the specified SQL string to MySQL database, and obtai
 When SELECT type SQL is specified, Net::MySQL::RecordIterator object which shows the reference result is returned.
 
     $mysql->query(q{SELECT * FROM table});
-    my $a_record_iterator = $mysql->create_recrod_iterator();
+    my $a_record_iterator = $mysql->create_record_iterator();
 
 Net::MySQL::RecordIterator object is applicable to acquisition of a reference result. See L<"/Net::SQL::RecordIterator API"> for more.
 
@@ -1050,49 +1050,6 @@ each() method takes out only one line from a result, and returns it as an ARRAY 
 
 =back
 
-=head1 SUPPORT OPERATING SYSTEM
-
-This module has been tested on these OSes.
-
-=over 4
-
-=item * MacOS 9.x
-
-with MacPerl5.6.1r.
-
-=item * MacOS X
-
-with perl5.6.0 build for darwin.
-
-=item * Windows2000
-
-with ActivePerl5.6.1 build631.
-
-=item * FreeBSD 3.4 and 4.x
-
-with perl5.6.1 build for i386-freebsd.
-
-with perl5.005_03 build for i386-freebsd.
-
-=item * Linux
-
-with perl 5.005_03 built for ppc-linux.
-
-with perl 5.6.0 bult for i386-linux.
-
-=item * Solaris 2.6 (SPARC)
-
-with perl 5.6.1 built for sun4-solaris.
-
-with perl 5.004_04 built for sun4-solaris.
-
-Can use on Solaris2.6 with perl5.004_04, although I<make test> is failure.
-
-=back
-
-This list is the environment which I can use by the test usually. Net::MySQL will operate  also in much environment which is not in a list.
-
-I believe this module can work with whatever perls which has B<IO::Socket>. I'll be glad if you give me a report of successful installation of this module on I<rare> OSes.
 
 =head1 SEE ALSO
 
@@ -1113,6 +1070,7 @@ http://github.com/tsucchi/p5-Net-MySQL
 =head1 COPYRIGHT AND LICENCE
 
 Copyright (C) 2002-2011 Hiroyuki OYAMA. Japan. All rights reserved.
+
 Copyright (C) 2011 Takuya Tsuchida
 
 This library is free software; you can redistribute it and/or modify
